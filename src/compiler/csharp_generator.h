@@ -27,6 +27,14 @@ std::string GetServices(const grpc::protobuf::FileDescriptor* file,
                         bool generate_client, bool generate_server,
                         bool internal_access, bool append_async_suffix);
 
+// TCP variant: emits an abstract `<Service>Base : IPacketHandler` whose RPC
+// methods are synchronous `<Response> <Method>(<Request> request, Connection
+// connection)` tagged with `[PacketHandler(MsgId.<Method>)]`. Routes over the
+// TemplateTCPServer packet dispatcher instead of gRPC/HTTP-2. No client stub,
+// no marshallers, no BindService, no ServerCallContext.
+std::string GetServicesTcp(const grpc::protobuf::FileDescriptor* file,
+                           bool internal_access);
+
 }  // namespace grpc_csharp_generator
 
 #endif  // GRPC_INTERNAL_COMPILER_CSHARP_GENERATOR_H

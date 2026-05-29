@@ -63,12 +63,14 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     bool generate_server = true;
     bool internal_access = false;
     bool append_async_suffix = false;
+    bool tcp = false;
     std::string base_namespace = "";
     bool base_namespace_present = false;
 
     // the suffix that will get appended to the name generated from the name
     // of the original .proto file
     std::string file_suffix = "Grpc.cs";
+    bool file_suffix_present = false;
     for (size_t i = 0; i < options.size(); i++) {
       if (options[i].first == "no_client") {
         generate_client = false;
@@ -76,8 +78,13 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
         generate_server = false;
       } else if (options[i].first == "internal_access") {
         internal_access = true;
+      } else if (options[i].first == "tcp") {
+        // TemplateTCPServer mode: emit a TCP packet-handler base instead of
+        // gRPC service stubs.
+        tcp = (options[i].second == "true" || options[i].second == "");
       } else if (options[i].first == "file_suffix") {
         file_suffix = options[i].second;
+        file_suffix_present = true;
       } else if (options[i].first == "base_namespace") {
         // Support for base_namespace option in this plugin is experimental.
         // The option may be removed or file names generated may change
@@ -92,9 +99,17 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
       }
     }
 
-    std::string code = grpc_csharp_generator::GetServices(
-        file, generate_client, generate_server, internal_access,
-        append_async_suffix);
+    // In TCP mode default the output suffix to "Tcp.cs" (unless overridden).
+    if (tcp && !file_suffix_present) {
+      file_suffix = "Tcp.cs";
+    }
+
+    std::string code =
+        tcp ? grpc_csharp_generator::GetServicesTcp(file, internal_access)
+            : grpc_csharp_generator::GetServices(file, generate_client,
+                                                 generate_server,
+                                                 internal_access,
+                                                 append_async_suffix);
     if (code.size() == 0) {
       return true;  // don't generate a file if there are no services
     }
