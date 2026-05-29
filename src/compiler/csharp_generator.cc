@@ -501,20 +501,24 @@ void GenerateServerClass(Printer* out, const ServiceDescriptor* service,
 // ---------------------------------------------------------------------------
 // TemplateTCPServer TCP variant
 //
-// Emits an abstract base whose RPC methods route over the custom TCP packet
-// dispatcher rather than gRPC/HTTP-2. Fully-qualified names of the server-side
-// types are hardcoded here because they live in the TemplateTCPServer.GameServer
-// / .Common assemblies, which are not derivable from the .proto.
+// Emits an abstract base whose RPC methods route over a TCP packet dispatcher
+// rather than gRPC/HTTP-2. The server-side type names (IPacketHandler, the
+// PacketHandler attribute, Connection) are supplied by the caller via generator
+// options, so no project namespace is baked into the generator. The MsgId enum
+// is taken from the proto's own csharp_namespace.
 // ---------------------------------------------------------------------------
-const char* kTcpIPacketHandler =
-    "global::TemplateTCPServer.GameServer.Packets.IPacketHandler";
-const char* kTcpPacketHandlerAttr =
-    "global::TemplateTCPServer.GameServer.Packets.PacketHandler";
-const char* kTcpConnection =
-    "global::TemplateTCPServer.GameServer.Networking.Connection";
-const char* kTcpMsgId = "global::TemplateTCPServer.Common.Protocol.MsgId";
+struct TcpTypeNames {
+  std::string ipackethandler;  // e.g. global::My.Pkg.IPacketHandler
+  std::string packethandler_attr;
+  std::string connection;
+  std::string msgid;
+};
 
-void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service) {
+// Prefix a caller-supplied FQN with "global::" (callers pass it without).
+std::string TcpGlobal(const std::string& fqn) { return "global::" + fqn; }
+
+void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
+                            const TcpTypeNames& types) {
   out->Print(
       "/// <summary>Base class for TCP packet-handler implementations of "
       "$servicename$.\n"
@@ -523,7 +527,8 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service) {
       "servicename", GetServiceClassName(service));
   GenerateObsoleteAttribute(out, service->options().deprecated());
   out->Print("public abstract partial class $name$ : $ipackethandler$\n", "name",
-             GetServerClassName(service), "ipackethandler", kTcpIPacketHandler);
+             GetServerClassName(service), "ipackethandler",
+             types.ipackethandler);
   out->Print("{\n");
   out->Indent();
   for (int i = 0; i < service->method_count(); i++) {
@@ -537,7 +542,7 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service) {
     GenerateGeneratedCodeAttribute(out);
     // Route key: match the rpc name to the MsgId enum member of the same name.
     out->Print("[$attr$($msgid$.$methodname$)]\n", "attr",
-               kTcpPacketHandlerAttr, "msgid", kTcpMsgId, "methodname",
+               types.packethandler_attr, "msgid", types.msgid, "methodname",
                method->name());
     out->Print(
         "public virtual $response$ $methodname$($request$ request, "
@@ -545,7 +550,7 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service) {
         "response", GRPC_CUSTOM_CSHARP_GETCLASSNAME(method->output_type()),
         "methodname", method->name(), "request",
         GRPC_CUSTOM_CSHARP_GETCLASSNAME(method->input_type()), "connection",
-        kTcpConnection);
+        types.connection);
     out->Print("{\n");
     out->Indent();
     out->Print(
@@ -561,7 +566,7 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service) {
 }
 
 void GenerateServiceTcp(Printer* out, const ServiceDescriptor* service,
-                        bool internal_access) {
+                        bool internal_access, const TcpTypeNames& types) {
   GenerateDocCommentBody(out, service);
   GenerateObsoleteAttribute(out, service->options().deprecated());
   out->Print("$access_level$ static partial class $classname$\n", "access_level",
@@ -569,7 +574,7 @@ void GenerateServiceTcp(Printer* out, const ServiceDescriptor* service,
              GetServiceClassName(service));
   out->Print("{\n");
   out->Indent();
-  GenerateServerClassTcp(out, service);
+  GenerateServerClassTcp(out, service, types);
   out->Outdent();
   out->Print("}\n");
 }
@@ -954,7 +959,10 @@ std::string GetServices(const FileDescriptor* file, bool generate_client,
   return output;
 }
 
-std::string GetServicesTcp(const FileDescriptor* file, bool internal_access) {
+std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
+                           const std::string& ipackethandler_type,
+                           const std::string& packethandler_attr_type,
+                           const std::string& connection_type) {
   std::string output;
   {
     StringOutputStream output_stream(&output);
@@ -963,6 +971,15 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access) {
     if (file->service_count() == 0) {
       return output;
     }
+
+    // Resolve the server-side type names once. The three handler types come
+    // from the caller; MsgId is the proto's own csharp_namespace + ".MsgId".
+    TcpTypeNames types;
+    types.ipackethandler = TcpGlobal(ipackethandler_type);
+    types.packethandler_attr = TcpGlobal(packethandler_attr_type);
+    types.connection = TcpGlobal(connection_type);
+    types.msgid =
+        TcpGlobal(GRPC_CUSTOM_CSHARP_GETFILENAMESPACE(file) + ".MsgId");
 
     out.Print("// <auto-generated>\n");
     out.Print(
@@ -987,7 +1004,7 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access) {
       out.Indent();
     }
     for (int i = 0; i < file->service_count(); i++) {
-      GenerateServiceTcp(&out, file->service(i), internal_access);
+      GenerateServiceTcp(&out, file->service(i), internal_access, types);
     }
     if (file_namespace != "") {
       out.Outdent();

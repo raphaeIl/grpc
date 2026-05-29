@@ -64,6 +64,12 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     bool internal_access = false;
     bool append_async_suffix = false;
     bool tcp = false;
+    // TCP mode: fully-qualified names of the server-side types the generated
+    // base depends on. Required when tcp=true; no defaults (so no repo name is
+    // baked into the generator). Supply WITHOUT a leading "global::".
+    std::string tcp_ipackethandler = "";
+    std::string tcp_packethandler_attr = "";
+    std::string tcp_connection = "";
     std::string base_namespace = "";
     bool base_namespace_present = false;
 
@@ -82,6 +88,12 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
         // TemplateTCPServer mode: emit a TCP packet-handler base instead of
         // gRPC service stubs.
         tcp = (options[i].second == "true" || options[i].second == "");
+      } else if (options[i].first == "ipackethandler") {
+        tcp_ipackethandler = options[i].second;
+      } else if (options[i].first == "packethandler_attr") {
+        tcp_packethandler_attr = options[i].second;
+      } else if (options[i].first == "connection") {
+        tcp_connection = options[i].second;
       } else if (options[i].first == "file_suffix") {
         file_suffix = options[i].second;
         file_suffix_present = true;
@@ -104,8 +116,22 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
       file_suffix = "Tcp.cs";
     }
 
+    // TCP mode requires the server-side type names; there are no defaults.
+    if (tcp && (tcp_ipackethandler.empty() || tcp_packethandler_attr.empty() ||
+                tcp_connection.empty())) {
+      *error =
+          "tcp mode requires the 'ipackethandler', 'packethandler_attr', and "
+          "'connection' options (fully-qualified type names without "
+          "'global::'). Example: --grpc_opt=tcp,ipackethandler=My.Pkg."
+          "IPacketHandler,packethandler_attr=My.Pkg.PacketHandler,connection="
+          "My.Pkg.Connection";
+      return false;
+    }
+
     std::string code =
-        tcp ? grpc_csharp_generator::GetServicesTcp(file, internal_access)
+        tcp ? grpc_csharp_generator::GetServicesTcp(
+                  file, internal_access, tcp_ipackethandler,
+                  tcp_packethandler_attr, tcp_connection)
             : grpc_csharp_generator::GetServices(file, generate_client,
                                                  generate_server,
                                                  internal_access,

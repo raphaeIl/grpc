@@ -29,11 +29,19 @@ std::string GetServices(const grpc::protobuf::FileDescriptor* file,
 
 // TCP variant: emits an abstract `<Service>Base : IPacketHandler` whose RPC
 // methods are synchronous `<Response> <Method>(<Request> request, Connection
-// connection)` tagged with `[PacketHandler(MsgId.<Method>)]`. Routes over the
-// TemplateTCPServer packet dispatcher instead of gRPC/HTTP-2. No client stub,
-// no marshallers, no BindService, no ServerCallContext.
+// connection)` tagged with `[PacketHandler(MsgId.<Method>)]`. Routes over a TCP
+// packet dispatcher instead of gRPC/HTTP-2. No client stub, no marshallers, no
+// BindService, no ServerCallContext.
+//
+// The server-side type names are caller-supplied (fully-qualified, WITHOUT a
+// leading "global::"): the IPacketHandler interface, the PacketHandler
+// attribute, and the Connection type. This keeps any project-specific namespace
+// out of the generator.
 std::string GetServicesTcp(const grpc::protobuf::FileDescriptor* file,
-                           bool internal_access);
+                           bool internal_access,
+                           const std::string& ipackethandler_type,
+                           const std::string& packethandler_attr_type,
+                           const std::string& connection_type);
 
 }  // namespace grpc_csharp_generator
 
