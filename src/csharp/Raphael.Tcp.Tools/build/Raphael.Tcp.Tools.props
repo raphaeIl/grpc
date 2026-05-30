@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- Resolve the forked plugin binary for the current build OS/arch.
+       This version ships windows_x64 only; other platforms error in .targets. -->
+  <PropertyGroup>
+    <_TcpToolsRoot>$(MSBuildThisFileDirectory)..\</_TcpToolsRoot>
+    <TcpPluginExe Condition="'$(TcpPluginExe)' == '' and '$(OS)' == 'Windows_NT'">$(_TcpToolsRoot)tools\windows_x64\grpc_csharp_plugin.exe</TcpPluginExe>
+  </PropertyGroup>
+
+  <!-- Consumer MUST set these to their own fully-qualified type names (no global:: prefix).
+       Override in the consuming project before this import takes effect, or via the csproj
+       PropertyGroup. Defaults are intentionally empty so a missing one fails loudly. -->
+  <PropertyGroup>
+    <TcpIPacketHandler Condition="'$(TcpIPacketHandler)' == ''"></TcpIPacketHandler>
+    <TcpPacketHandlerAttr Condition="'$(TcpPacketHandlerAttr)' == ''"></TcpPacketHandlerAttr>
+    <TcpConnection Condition="'$(TcpConnection)' == ''"></TcpConnection>
+  </PropertyGroup>
+
+</Project>
