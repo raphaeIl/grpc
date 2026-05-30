@@ -517,6 +517,23 @@ struct TcpTypeNames {
 // Prefix a caller-supplied FQN with "global::" (callers pass it without).
 std::string TcpGlobal(const std::string& fqn) { return "global::" + fqn; }
 
+// Derive the reply MsgId member name from a response message's short name by
+// stripping a trailing "Reply" or "Response" (PongReply -> "Pong"). The result
+// is expected to match a member of the MsgId enum. Returns "" if no suffix is
+// present (caller then omits the reply id, i.e. fire-and-forget).
+std::string TcpReplyMsgIdName(const MethodDescriptor* method) {
+  std::string name(method->output_type()->name());
+  const char* suffixes[] = {"Reply", "Response"};
+  for (const char* suffix : suffixes) {
+    size_t slen = std::string(suffix).size();
+    if (name.size() > slen &&
+        name.compare(name.size() - slen, slen, suffix) == 0) {
+      return name.substr(0, name.size() - slen);
+    }
+  }
+  return "";
+}
+
 void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
                             const TcpTypeNames& types) {
   out->Print(
@@ -541,9 +558,18 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
     GenerateObsoleteAttribute(out, method->options().deprecated());
     GenerateGeneratedCodeAttribute(out);
     // Route key: match the rpc name to the MsgId enum member of the same name.
-    out->Print("[$attr$($msgid$.$methodname$)]\n", "attr",
-               types.packethandler_attr, "msgid", types.msgid, "methodname",
-               method->name());
+    // Reply id (optional): the response type name minus a Reply/Response suffix,
+    // also matched against the MsgId enum (PongReply -> MsgId.Pong).
+    std::string reply = TcpReplyMsgIdName(method);
+    if (reply.empty()) {
+      out->Print("[$attr$($msgid$.$methodname$)]\n", "attr",
+                 types.packethandler_attr, "msgid", types.msgid, "methodname",
+                 method->name());
+    } else {
+      out->Print("[$attr$($msgid$.$methodname$, $msgid$.$reply$)]\n", "attr",
+                 types.packethandler_attr, "msgid", types.msgid, "methodname",
+                 method->name(), "reply", reply);
+    }
     out->Print(
         "public virtual $response$ $methodname$($request$ request, "
         "$connection$ connection)\n",
