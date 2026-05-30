@@ -4,6 +4,16 @@ All notable changes to **Raphael.Tcp.Tools** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2]
+
+### Fixed
+- TCP base codegen now passes protobuf's well-known-types include dir
+  (`Protobuf_StandardImportsPath`) to its `protoc` invocation. Previously the
+  hand-rolled `Exec` passed only `--proto_path=$(TcpProtoDir)`, so any TCP proto
+  that imported `google/protobuf/*.proto` failed to generate. This broke the
+  `google.protobuf.Empty` -> `void` feature (added in 1.1.0), which requires
+  importing `google/protobuf/empty.proto`.
+
 ## [1.1.1]
 
 ### Added

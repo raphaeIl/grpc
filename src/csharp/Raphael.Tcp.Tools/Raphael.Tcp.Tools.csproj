@@ -11,8 +11,8 @@
     <NoWarn>$(NoWarn);NU5128</NoWarn>
 
     <PackageId>Raphael.Tcp.Tools</PackageId>
-    <Version>1.1.1</Version>
-    <PackageReleaseNotes>1.1.1: add changelog/release notes. 1.1.0: google.protobuf.Empty response now maps to a C# void handler (no auto-reply); dropped the Raphael prefix from all build properties (RaphaelTcp* -> Tcp*) - breaking for consuming csproj. See CHANGELOG.md.</PackageReleaseNotes>
+    <Version>1.1.2</Version>
+    <PackageReleaseNotes>1.1.2: fix TCP protoc invocation to include protobuf well-known imports path (google/protobuf/* now resolves, including Empty->void scenarios). 1.1.1: add changelog/release notes. 1.1.0: google.protobuf.Empty response now maps to a C# void handler (no auto-reply); dropped the Raphael prefix from all build properties (RaphaelTcp* -> Tcp*) - breaking for consuming csproj. See CHANGELOG.md.</PackageReleaseNotes>
     <Authors>raphaeIl</Authors>
     <Description>protoc tooling that generates synchronous TCP packet-handler service bases
       (IPacketHandler / [PacketHandler(MsgId)] / Connection) instead of gRPC HTTP/2 stubs,
