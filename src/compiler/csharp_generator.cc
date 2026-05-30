@@ -517,6 +517,14 @@ struct TcpTypeNames {
 // Prefix a caller-supplied FQN with "global::" (callers pass it without).
 std::string TcpGlobal(const std::string& fqn) { return "global::" + fqn; }
 
+// True when an rpc's response is google.protobuf.Empty. Such handlers have no
+// canonical reply: the generated method returns C# `void` and no ReplyMsgId is
+// emitted, so the dispatcher invokes the handler and sends nothing automatically
+// (the handler pushes any packets itself via the Connection).
+bool TcpIsVoidResponse(const MethodDescriptor* method) {
+  return method->output_type()->full_name() == "google.protobuf.Empty";
+}
+
 // Derive the reply MsgId member name from a response message's short name by
 // stripping a trailing "Reply" or "Response" (PongReply -> "Pong"). The result
 // is expected to match a member of the MsgId enum. Returns "" if no suffix is
@@ -560,7 +568,11 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
     // Route key: match the rpc name to the MsgId enum member of the same name.
     // Reply id (optional): the response type name minus a Reply/Response suffix,
     // also matched against the MsgId enum (PongReply -> MsgId.Pong).
-    std::string reply = TcpReplyMsgIdName(method);
+    // A google.protobuf.Empty response is the explicit "no canonical reply"
+    // signal: emit a void method and no ReplyMsgId. Otherwise the reply id is
+    // the response type name minus a Reply/Response suffix.
+    bool is_void = TcpIsVoidResponse(method);
+    std::string reply = is_void ? "" : TcpReplyMsgIdName(method);
     if (reply.empty()) {
       out->Print("[$attr$($msgid$.$methodname$)]\n", "attr",
                  types.packethandler_attr, "msgid", types.msgid, "methodname",
@@ -573,7 +585,9 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
     out->Print(
         "public virtual $response$ $methodname$($request$ request, "
         "$connection$ connection)\n",
-        "response", GRPC_CUSTOM_CSHARP_GETCLASSNAME(method->output_type()),
+        "response",
+        is_void ? "void"
+                : GRPC_CUSTOM_CSHARP_GETCLASSNAME(method->output_type()),
         "methodname", method->name(), "request",
         GRPC_CUSTOM_CSHARP_GETCLASSNAME(method->input_type()), "connection",
         types.connection);
