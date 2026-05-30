@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Packaging-only project: ships the forked grpc_csharp_plugin (TCP variant)
+       plus MSBuild .props/.targets that wire it into Grpc.Tools' <Protobuf> item.
+       No compiled output of its own. -->
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- Keep the Grpc.Tools dependency in the nuspec: consumers need it for protoc
+         and the <Protobuf> message codegen that this package's .targets builds on. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <PackageId>Raphael.Tcp.Tools</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>raphaeIl</Authors>
+    <Description>protoc tooling that generates synchronous TCP packet-handler service bases
+      (IPacketHandler / [PacketHandler(MsgId)] / Connection) instead of gRPC HTTP/2 stubs,
+      via a forked grpc_csharp_plugin. Depends on Grpc.Tools for protoc and the message codegen.
+      Windows-x64 only in this version.</Description>
+    <PackageTags>protobuf;protoc;grpc;tcp;codegen;msbuild</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <DevelopmentDependency>true</DevelopmentDependency>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- The package brings its own protoc + the <Protobuf> item / message codegen.
+       PrivateAssets="none" so Grpc.Tools' build assets (props/targets that set
+       Protobuf_ properties and run the C# message codegen) flow transitively to the
+       consumer; otherwise the default excludes Build and the consumer gets no protoc. -->
+  <ItemGroup>
+    <PackageReference Include="Grpc.Tools" Version="2.66.0"
+                      PrivateAssets="none"
+                      IncludeAssets="build;buildMultitargeting;buildTransitive;compile;runtime;native;contentfiles;analyzers" />
+  </ItemGroup>
+
+  <!-- Ship the MSBuild logic and the plugin binary as package content. -->
+  <ItemGroup>
+    <None Include="build\**" Pack="true" PackagePath="build\" />
+    <None Include="tools\**" Pack="true" PackagePath="tools\" />
+  </ItemGroup>
+
+</Project>
