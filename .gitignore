@@ -186,5 +186,7 @@ fuzz-*.log
 third_party/**/MODULE.bazel
 MODULE.bazel.lock
 
+.claude/
+
 # Local build tree (TemplateTCPServer csharp plugin fork)
 _build/

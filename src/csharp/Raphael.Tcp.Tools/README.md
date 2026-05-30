@@ -30,16 +30,16 @@ so you get messages **and** the TCP base from one package.
 
 **Windows-x64 only** in this version. On other platforms the build fails with a clear
 error. To use it elsewhere, build the forked plugin for your platform and set
-`RaphaelTcpPluginExe`.
+`TcpPluginExe`.
 
 ## Usage
 
 ```xml
 <PropertyGroup>
   <!-- Fully-qualified names of YOUR types (no global:: prefix). Required. -->
-  <RaphaelTcpIPacketHandler>MyApp.Net.IPacketHandler</RaphaelTcpIPacketHandler>
-  <RaphaelTcpPacketHandlerAttr>MyApp.Net.PacketHandlerAttribute</RaphaelTcpPacketHandlerAttr>
-  <RaphaelTcpConnection>MyApp.Net.Connection</RaphaelTcpConnection>
+  <TcpIPacketHandler>MyApp.Net.IPacketHandler</TcpIPacketHandler>
+  <TcpPacketHandlerAttr>MyApp.Net.PacketHandlerAttribute</TcpPacketHandlerAttr>
+  <TcpConnection>MyApp.Net.Connection</TcpConnection>
 </PropertyGroup>
 
 <ItemGroup>
@@ -49,8 +49,8 @@ error. To use it elsewhere, build the forked plugin for your platform and set
 </ItemGroup>
 ```
 
-Drop `.proto` files into `protos/` (override with `RaphaelTcpProtoDir`). Generated
-`*Tcp.cs` lands in `Generated/` (override with `RaphaelTcpOutDir`) and is compiled
+Drop `.proto` files into `protos/` (override with `TcpProtoDir`). Generated
+`*Tcp.cs` lands in `Generated/` (override with `TcpOutDir`) and is compiled
 automatically. Both are regenerated on build; neither needs to be committed.
 
 Your project must define the three referenced types and a `MsgId` enum whose members
