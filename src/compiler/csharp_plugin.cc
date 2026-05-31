@@ -70,6 +70,7 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     std::string tcp_ipackethandler = "";
     std::string tcp_packethandler_attr = "";
     std::string tcp_connection = "";
+    std::string tcp_msgid_prefix = "Msg";
     std::string base_namespace = "";
     bool base_namespace_present = false;
 
@@ -94,6 +95,8 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
         tcp_packethandler_attr = options[i].second;
       } else if (options[i].first == "connection") {
         tcp_connection = options[i].second;
+      } else if (options[i].first == "msgid_prefix") {
+        tcp_msgid_prefix = options[i].second;
       } else if (options[i].first == "file_suffix") {
         file_suffix = options[i].second;
         file_suffix_present = true;
@@ -131,7 +134,7 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     std::string code =
         tcp ? grpc_csharp_generator::GetServicesTcp(
                   file, internal_access, tcp_ipackethandler,
-                  tcp_packethandler_attr, tcp_connection)
+                  tcp_packethandler_attr, tcp_connection, tcp_msgid_prefix)
             : grpc_csharp_generator::GetServices(file, generate_client,
                                                  generate_server,
                                                  internal_access,

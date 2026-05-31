@@ -512,6 +512,7 @@ struct TcpTypeNames {
   std::string packethandler_attr;
   std::string connection;
   std::string msgid;
+  std::string msgid_prefix;
 };
 
 // Prefix a caller-supplied FQN with "global::" (callers pass it without).
@@ -525,21 +526,26 @@ bool TcpIsVoidResponse(const MethodDescriptor* method) {
   return method->output_type()->full_name() == "google.protobuf.Empty";
 }
 
-// Derive the reply MsgId member name from a response message's short name by
-// stripping a trailing "Reply" or "Response" (PongReply -> "Pong"). The result
-// is expected to match a member of the MsgId enum. Returns "" if no suffix is
-// present (caller then omits the reply id, i.e. fire-and-forget).
-std::string TcpReplyMsgIdName(const MethodDescriptor* method) {
-  std::string name(method->output_type()->name());
-  const char* suffixes[] = {"Reply", "Response"};
-  for (const char* suffix : suffixes) {
-    size_t slen = std::string(suffix).size();
-    if (name.size() > slen &&
-        name.compare(name.size() - slen, slen, suffix) == 0) {
-      return name.substr(0, name.size() - slen);
-    }
+std::string TcpStripDirectionalMessagePrefix(const std::string& message_name,
+                                             std::string* direction_suffix) {
+  *direction_suffix = "";
+  if (message_name.size() > 3 && message_name.compare(0, 3, "CS_") == 0) {
+    *direction_suffix = "Cs";
+    return message_name.substr(3);
   }
-  return "";
+  if (message_name.size() > 3 && message_name.compare(0, 3, "SC_") == 0) {
+    *direction_suffix = "Sc";
+    return message_name.substr(3);
+  }
+  return message_name;
+}
+
+std::string TcpMsgIdNameFromMessage(const std::string& message_name,
+                                    const std::string& msgid_prefix) {
+  std::string direction_suffix;
+  std::string base_name =
+      TcpStripDirectionalMessagePrefix(message_name, &direction_suffix);
+  return msgid_prefix + direction_suffix + base_name;
 }
 
 void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
@@ -547,7 +553,8 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
   out->Print(
       "/// <summary>Base class for TCP packet-handler implementations of "
       "$servicename$.\n"
-      "/// Each rpc maps to a [PacketHandler(MsgId.&lt;rpc name&gt;)] virtual "
+      "/// Each rpc maps to a [PacketHandler(MsgId.&lt;request type-derived "
+      "name&gt;)] virtual "
       "method dispatched over TCP.</summary>\n",
       "servicename", GetServiceClassName(service));
   GenerateObsoleteAttribute(out, service->options().deprecated());
@@ -565,22 +572,28 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
     GenerateDocCommentBody(out, method);
     GenerateObsoleteAttribute(out, method->options().deprecated());
     GenerateGeneratedCodeAttribute(out);
-    // Route key: match the rpc name to the MsgId enum member of the same name.
-    // Reply id (optional): the response type name minus a Reply/Response suffix,
-    // also matched against the MsgId enum (PongReply -> MsgId.Pong).
+    // Route key: derived from the request type short name, with a leading
+    // CS_/SC_ mapped to Cs/Sc and prefixed by caller-configured msgid_prefix.
+    // Example: CS_ConfirmExchange + "Msg" -> MsgCsConfirmExchange.
+    // Reply id (optional): derived the same way from the response type.
     // A google.protobuf.Empty response is the explicit "no canonical reply"
     // signal: emit a void method and no ReplyMsgId. Otherwise the reply id is
-    // the response type name minus a Reply/Response suffix.
+    // the response type-derived id.
     bool is_void = TcpIsVoidResponse(method);
-    std::string reply = is_void ? "" : TcpReplyMsgIdName(method);
+    std::string request_msgid = TcpMsgIdNameFromMessage(
+        method->input_type()->name(), types.msgid_prefix);
+    std::string reply = is_void ? ""
+                                : TcpMsgIdNameFromMessage(
+                                      method->output_type()->name(),
+                                      types.msgid_prefix);
     if (reply.empty()) {
-      out->Print("[$attr$($msgid$.$methodname$)]\n", "attr",
-                 types.packethandler_attr, "msgid", types.msgid, "methodname",
-                 method->name());
+      out->Print("[$attr$($msgid$.$request_msgid$)]\n", "attr",
+                 types.packethandler_attr, "msgid", types.msgid,
+                 "request_msgid", request_msgid);
     } else {
-      out->Print("[$attr$($msgid$.$methodname$, $msgid$.$reply$)]\n", "attr",
-                 types.packethandler_attr, "msgid", types.msgid, "methodname",
-                 method->name(), "reply", reply);
+      out->Print("[$attr$($msgid$.$request_msgid$, $msgid$.$reply$)]\n", "attr",
+                 types.packethandler_attr, "msgid", types.msgid,
+                 "request_msgid", request_msgid, "reply", reply);
     }
     out->Print(
         "public virtual $response$ $methodname$($request$ request, "
@@ -1002,7 +1015,8 @@ std::string GetServices(const FileDescriptor* file, bool generate_client,
 std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
-                           const std::string& connection_type) {
+                           const std::string& connection_type,
+                           const std::string& msgid_prefix) {
   std::string output;
   {
     StringOutputStream output_stream(&output);
@@ -1020,6 +1034,7 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
     types.connection = TcpGlobal(connection_type);
     types.msgid =
         TcpGlobal(GRPC_CUSTOM_CSHARP_GETFILENAMESPACE(file) + ".MsgId");
+    types.msgid_prefix = msgid_prefix;
 
     out.Print("// <auto-generated>\n");
     out.Print(
