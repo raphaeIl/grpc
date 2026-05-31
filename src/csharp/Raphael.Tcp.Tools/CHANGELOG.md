@@ -4,6 +4,24 @@ All notable changes to **Raphael.Tcp.Tools** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0]
+
+### Added
+- New TCP codegen option `msgid_prefix` (MSBuild property: `TcpMsgIdPrefix`) controls
+  the prefix used when constructing `MsgId` enum member names. Default is `Msg`.
+
+### Changed
+- **Breaking (generated API shape):** TCP handlers are now generated as top-level
+  classes; the outer static wrapper service class is no longer emitted.
+- **Breaking (generated API shape):** TCP base class naming changed from
+  `<ServiceName>Base` to `<ServiceNameWithoutService>HandlerBase`
+  (for example, `GunServiceBase` -> `GunHandlerBase`).
+- **Breaking (MsgId mapping):** request/reply `MsgId` values are now derived from
+  request/response message type names instead of rpc names.
+  - `CS_*` and `SC_*` message prefixes are normalized to `Cs` and `Sc`.
+  - The configured `msgid_prefix` is prepended.
+  - `Reply`/`Response` suffix trimming is no longer applied.
+
 ## [1.1.2]
 
 ### Fixed

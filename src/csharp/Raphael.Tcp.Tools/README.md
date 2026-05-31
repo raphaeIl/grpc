@@ -4,22 +4,29 @@ protoc build-time tooling that generates **synchronous TCP packet-handler servic
 bases** from your `.proto` files, instead of gRPC's HTTP/2 async stubs.
 
 It uses a forked `grpc_csharp_plugin` (gRPC's C# code generator, modified) so that a
-`service` in a `.proto` becomes an abstract base you implement on a raw TCP packet
-server — no HTTP/2, no `ServerCallContext`, no async `Task<T>`.
+`service` in a `.proto` becomes a top-level abstract handler base you implement on a
+raw TCP packet server — no HTTP/2, no `ServerCallContext`, no async `Task<T>`.
 
 For each unary `rpc Foo (FooRequest) returns (FooReply)` it emits:
 
 ```csharp
-public abstract partial class MyServiceBase : IPacketHandler
+public abstract partial class MyHandlerBase : IPacketHandler
 {
-    [PacketHandler(MsgId.Foo, MsgId.FooReply)]
-    public virtual FooReply Foo(FooRequest request, Connection connection)
+    [PacketHandler(MsgId.MsgCsFoo, MsgId.MsgScFoo)]
+    public virtual SC_Foo Foo(CS_Foo request, Connection connection)
         => throw new NotImplementedException("Foo is not implemented.");
 }
 ```
 
-- request `MsgId` is taken from the rpc name, reply `MsgId` from the response type
-  name minus a `Reply`/`Response` suffix;
+- no static wrapper service class is generated;
+- handler class name is `<ServiceNameWithoutService>HandlerBase`
+  (for example, `GunService` -> `GunHandlerBase`);
+- request/reply `MsgId` values are derived from message type names (not rpc names):
+  - if the message name starts with `CS_` or `SC_`, that prefix is converted to `Cs` or
+    `Sc`;
+  - then `msgid_prefix` (defaults to `Msg`) is prepended;
+  - example: `CS_ConfirmExchange` -> `MsgCsConfirmExchange`,
+    `SC_ConfirmExchange` -> `MsgScConfirmExchange`;
 - the method is **synchronous** (returns the response, not `Task<T>`);
 - it receives your `Connection` instead of gRPC's `ServerCallContext`.
 
@@ -40,10 +47,12 @@ error. To use it elsewhere, build the forked plugin for your platform and set
   <TcpIPacketHandler>MyApp.Net.IPacketHandler</TcpIPacketHandler>
   <TcpPacketHandlerAttr>MyApp.Net.PacketHandlerAttribute</TcpPacketHandlerAttr>
   <TcpConnection>MyApp.Net.Connection</TcpConnection>
+  <!-- Optional: prefix used to construct MsgId enum names. Default is "Msg". -->
+  <TcpMsgIdPrefix>Msg</TcpMsgIdPrefix>
 </PropertyGroup>
 
 <ItemGroup>
-  <PackageReference Include="Raphael.Tcp.Tools" Version="1.0.0" />
+  <PackageReference Include="Raphael.Tcp.Tools" Version="1.2.0" />
   <!-- Messages: Grpc.Tools (a transitive dependency) handles --csharp_out. -->
   <Protobuf Include="protos\**\*.proto" GrpcServices="None" />
 </ItemGroup>
@@ -54,12 +63,15 @@ Drop `.proto` files into `protos/` (override with `TcpProtoDir`). Generated
 automatically. Both are regenerated on build; neither needs to be committed.
 
 Your project must define the three referenced types and a `MsgId` enum whose members
-match the rpc names / reply names.
+match generated message-derived names.
 
 ## Requirements
 
 - A `[PacketHandler]` attribute whose constructor accepts `(MsgId request, MsgId reply)`.
-- `MsgId` enum members matching each rpc name and reply name.
+- `MsgId` enum members matching:
+  - `<TcpMsgIdPrefix> + Cs + <MessageNameWithoutCS_>` for request messages named `CS_*`;
+  - `<TcpMsgIdPrefix> + Sc + <MessageNameWithoutSC_>` for response messages named `SC_*`;
+  - `<TcpMsgIdPrefix> + <MessageName>` for messages without those directional prefixes.
 - Streaming rpcs are skipped (unary only).
 
 ## License

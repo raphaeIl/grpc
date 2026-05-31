@@ -200,6 +200,17 @@ std::string GetServerClassName(const ServiceDescriptor* service) {
   return std::string(service->name()) + "Base";
 }
 
+std::string GetTcpHandlerClassName(const ServiceDescriptor* service) {
+  std::string name(service->name());
+  const std::string service_suffix = "Service";
+  if (name.size() > service_suffix.size() &&
+      name.compare(name.size() - service_suffix.size(), service_suffix.size(),
+                   service_suffix) == 0) {
+    name = name.substr(0, name.size() - service_suffix.size());
+  }
+  return name + "HandlerBase";
+}
+
 std::string GetCSharpMethodType(const MethodDescriptor* method) {
   if (method->client_streaming()) {
     if (method->server_streaming()) {
@@ -549,6 +560,7 @@ std::string TcpMsgIdNameFromMessage(const std::string& message_name,
 }
 
 void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
+                            bool internal_access,
                             const TcpTypeNames& types) {
   out->Print(
       "/// <summary>Base class for TCP packet-handler implementations of "
@@ -558,8 +570,9 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
       "method dispatched over TCP.</summary>\n",
       "servicename", GetServiceClassName(service));
   GenerateObsoleteAttribute(out, service->options().deprecated());
-  out->Print("public abstract partial class $name$ : $ipackethandler$\n", "name",
-             GetServerClassName(service), "ipackethandler",
+  out->Print("$access_level$ abstract partial class $name$ : $ipackethandler$\n",
+             "access_level", GetAccessLevel(internal_access), "name",
+             GetTcpHandlerClassName(service), "ipackethandler",
              types.ipackethandler);
   out->Print("{\n");
   out->Indent();
@@ -581,10 +594,10 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
     // the response type-derived id.
     bool is_void = TcpIsVoidResponse(method);
     std::string request_msgid = TcpMsgIdNameFromMessage(
-        method->input_type()->name(), types.msgid_prefix);
+        std::string(method->input_type()->name()), types.msgid_prefix);
     std::string reply = is_void ? ""
                                 : TcpMsgIdNameFromMessage(
-                                      method->output_type()->name(),
+                                      std::string(method->output_type()->name()),
                                       types.msgid_prefix);
     if (reply.empty()) {
       out->Print("[$attr$($msgid$.$request_msgid$)]\n", "attr",
@@ -621,15 +634,7 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
 void GenerateServiceTcp(Printer* out, const ServiceDescriptor* service,
                         bool internal_access, const TcpTypeNames& types) {
   GenerateDocCommentBody(out, service);
-  GenerateObsoleteAttribute(out, service->options().deprecated());
-  out->Print("$access_level$ static partial class $classname$\n", "access_level",
-             GetAccessLevel(internal_access), "classname",
-             GetServiceClassName(service));
-  out->Print("{\n");
-  out->Indent();
-  GenerateServerClassTcp(out, service, types);
-  out->Outdent();
-  out->Print("}\n");
+  GenerateServerClassTcp(out, service, internal_access, types);
 }
 
 void GenerateClientStub(Printer* out, const ServiceDescriptor* service) {
