@@ -68,7 +68,7 @@ Set only what you need:
   <TcpConnection>Custom.Server.Connection</TcpConnection>
 
   <!-- FQN of the MsgId enum type. Default is <csharp_namespace>.MsgId. -->
-  <TcpMsgIdType>Custom.Server.PacketTypes</TcpMsgIdType>
+  <TcpMsgId>Custom.Server.PacketTypes</TcpMsgId>
 
   <!-- Prepended verbatim to the exact message name: PingRequest -> MsgPingRequest. -->
   <TcpMsgIdPrefix>Msg</TcpMsgIdPrefix>
@@ -87,7 +87,7 @@ Set only what you need:
 | `TcpIPacketHandler` | `<csharp_namespace>.IPacketHandler` | FQN of the interface the base implements |
 | `TcpPacketHandlerAttr` | `<csharp_namespace>.PacketHandlerAttribute` | FQN of the `[PacketHandler]` attribute |
 | `TcpConnection` | `<csharp_namespace>.Connection` | FQN of the per-call connection type |
-| `TcpMsgIdType` | `<csharp_namespace>.MsgId` | FQN of the `MsgId` enum type used in the attributes |
+| `TcpMsgId` | `<csharp_namespace>.MsgId` | FQN of the `MsgId` enum type used in the attributes |
 | `TcpMsgIdPrefix` | *(empty)* | String prepended to the exact message name for each `MsgId` member |
 | `TcpNormalizeCsScPrefix` | `false` | When `true`, rewrite a leading `CS_`/`SC_` to `Cs`/`Sc` before prefixing |
 | `TcpOutDir` | `$(IntermediateOutputPath)` (obj/ root) | Output dir for the message file and the `*Tcp.cs` |

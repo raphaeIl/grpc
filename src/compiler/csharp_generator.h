@@ -50,7 +50,7 @@ std::string GetServicesTcp(const grpc::protobuf::FileDescriptor* file,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
                            const std::string& connection_type,
-                           const std::string& msgid_type,
+                           const std::string& msgid,
                            const std::string& msgid_prefix,
                            bool normalize_cs_sc_prefix);
 

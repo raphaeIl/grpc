@@ -27,7 +27,7 @@
     <_TcpOpts Condition="'$(TcpIPacketHandler)' != ''">$(_TcpOpts),ipackethandler=$(TcpIPacketHandler)</_TcpOpts>
     <_TcpOpts Condition="'$(TcpPacketHandlerAttr)' != ''">$(_TcpOpts),packethandler_attr=$(TcpPacketHandlerAttr)</_TcpOpts>
     <_TcpOpts Condition="'$(TcpConnection)' != ''">$(_TcpOpts),connection=$(TcpConnection)</_TcpOpts>
-    <_TcpOpts Condition="'$(TcpMsgIdType)' != ''">$(_TcpOpts),msgid_type=$(TcpMsgIdType)</_TcpOpts>
+    <_TcpOpts Condition="'$(TcpMsgId)' != ''">$(_TcpOpts),msgid=$(TcpMsgId)</_TcpOpts>
     <_TcpOpts Condition="'$(TcpMsgIdPrefix)' != ''">$(_TcpOpts),msgid_prefix=$(TcpMsgIdPrefix)</_TcpOpts>
     <_TcpOpts Condition="'$(TcpNormalizeCsScPrefix)' == 'true'">$(_TcpOpts),normalize_cs_sc_prefix=true</_TcpOpts>
   </PropertyGroup>

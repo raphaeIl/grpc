@@ -1036,7 +1036,7 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
                            const std::string& connection_type,
-                           const std::string& msgid_type,
+                           const std::string& msgid,
                            const std::string& msgid_prefix,
                            bool normalize_cs_sc_prefix) {
   std::string output;
@@ -1065,7 +1065,7 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
     types.connection = TcpGlobal(
         connection_type.empty() ? file_ns + ".Connection" : connection_type);
     types.msgid =
-        TcpGlobal(msgid_type.empty() ? file_ns + ".MsgId" : msgid_type);
+        TcpGlobal(msgid.empty() ? file_ns + ".MsgId" : msgid);
     types.msgid_prefix = msgid_prefix;
     types.normalize_cs_sc_prefix = normalize_cs_sc_prefix;
 

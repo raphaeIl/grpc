@@ -73,7 +73,7 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     std::string tcp_packethandler_attr = "";
     std::string tcp_connection = "";
     // FQN of the MsgId enum type (empty = <csharp_namespace>.MsgId).
-    std::string tcp_msgid_type = "";
+    std::string tcp_msgid = "";
     // Prepended verbatim to the exact message type name when building MsgId
     // members (empty = exact names, e.g. PingRequest).
     std::string tcp_msgid_prefix = "";
@@ -105,8 +105,8 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
         tcp_packethandler_attr = options[i].second;
       } else if (options[i].first == "connection") {
         tcp_connection = options[i].second;
-      } else if (options[i].first == "msgid_type") {
-        tcp_msgid_type = options[i].second;
+      } else if (options[i].first == "msgid") {
+        tcp_msgid = options[i].second;
       } else if (options[i].first == "msgid_prefix") {
         tcp_msgid_prefix = options[i].second;
       } else if (options[i].first == "normalize_cs_sc_prefix") {
@@ -139,7 +139,7 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     std::string code =
         tcp ? grpc_csharp_generator::GetServicesTcp(
                   file, internal_access, tcp_ipackethandler,
-                  tcp_packethandler_attr, tcp_connection, tcp_msgid_type,
+                  tcp_packethandler_attr, tcp_connection, tcp_msgid,
                   tcp_msgid_prefix, tcp_normalize_cs_sc_prefix)
             : grpc_csharp_generator::GetServices(file, generate_client,
                                                  generate_server,

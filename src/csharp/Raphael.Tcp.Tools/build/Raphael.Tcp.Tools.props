@@ -28,7 +28,7 @@
     <TcpPacketHandlerAttr Condition="'$(TcpPacketHandlerAttr)' == ''"></TcpPacketHandlerAttr>
     <TcpConnection Condition="'$(TcpConnection)' == ''"></TcpConnection>
     <!-- FQN of the MsgId enum type. Empty => <csharp_namespace>.MsgId. -->
-    <TcpMsgIdType Condition="'$(TcpMsgIdType)' == ''"></TcpMsgIdType>
+    <TcpMsgId Condition="'$(TcpMsgId)' == ''"></TcpMsgId>
     <!-- Prepended verbatim to the exact message name (empty => exact names). -->
     <TcpMsgIdPrefix Condition="'$(TcpMsgIdPrefix)' == ''"></TcpMsgIdPrefix>
     <!-- When true, rewrite a leading CS_/SC_ message prefix to Cs/Sc. -->
