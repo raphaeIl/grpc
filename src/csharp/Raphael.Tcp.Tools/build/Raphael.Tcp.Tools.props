@@ -1,19 +1,36 @@
 <Project>
 
-  <!-- Resolve the forked plugin binary for the current build OS/arch.
-       This version ships windows_x64 only; other platforms error in .targets. -->
+  <!-- Self-contained tooling: this package ships its own protoc, the forked
+       grpc_csharp_plugin (TCP variant) and the well-known-type proto includes,
+       mirroring how Grpc.Tools / Google.Protobuf.Tools lay them out. No
+       Grpc.Tools dependency is required. Windows-x64 only in this version;
+       other platforms error in .targets. -->
   <PropertyGroup>
-    <_TcpToolsRoot>$(MSBuildThisFileDirectory)..\</_TcpToolsRoot>
-    <TcpPluginExe Condition="'$(TcpPluginExe)' == '' and '$(OS)' == 'Windows_NT'">$(_TcpToolsRoot)tools\windows_x64\grpc_csharp_plugin.exe</TcpPluginExe>
+    <_TcpToolsRoot>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..\'))</_TcpToolsRoot>
+    <_TcpPackagedToolsPath>$(_TcpToolsRoot)tools</_TcpPackagedToolsPath>
+    <!-- Same well-known-types include dir layout as Google.Protobuf.Tools. -->
+    <_TcpStandardImportsPath>$(_TcpToolsRoot)build\native\include</_TcpStandardImportsPath>
+
+    <!-- protoc (messages) and the forked plugin (TCP base). Overridable. -->
+    <TcpProtocExe Condition="'$(TcpProtocExe)' == '' and '$(OS)' == 'Windows_NT'">$(_TcpPackagedToolsPath)\windows_x64\protoc.exe</TcpProtocExe>
+    <TcpPluginExe Condition="'$(TcpPluginExe)' == '' and '$(OS)' == 'Windows_NT'">$(_TcpPackagedToolsPath)\windows_x64\grpc_csharp_plugin.exe</TcpPluginExe>
   </PropertyGroup>
 
-  <!-- Consumer MUST set these to their own fully-qualified type names (no global:: prefix).
-       Override in the consuming project before this import takes effect, or via the csproj
-       PropertyGroup. Defaults are intentionally empty so a missing one fails loudly. -->
+  <!-- All codegen knobs are optional. Empty defaults mean the plugin falls back
+       to the proto's own csharp_namespace for the handler/attr/connection types
+       and to exact message names for MsgId members. Override any of these in the
+       consuming project's PropertyGroup to customize. -->
   <PropertyGroup>
+    <!-- Fully-qualified type names (no global:: prefix). Empty => derived from
+         the proto's csharp_namespace as <ns>.IPacketHandler,
+         <ns>.PacketHandlerAttribute, <ns>.Connection. -->
     <TcpIPacketHandler Condition="'$(TcpIPacketHandler)' == ''"></TcpIPacketHandler>
     <TcpPacketHandlerAttr Condition="'$(TcpPacketHandlerAttr)' == ''"></TcpPacketHandlerAttr>
     <TcpConnection Condition="'$(TcpConnection)' == ''"></TcpConnection>
+    <!-- Prepended verbatim to the exact message name (empty => exact names). -->
+    <TcpMsgIdPrefix Condition="'$(TcpMsgIdPrefix)' == ''"></TcpMsgIdPrefix>
+    <!-- When true, rewrite a leading CS_/SC_ message prefix to Cs/Sc. -->
+    <TcpNormalizeCsScPrefix Condition="'$(TcpNormalizeCsScPrefix)' == ''">false</TcpNormalizeCsScPrefix>
   </PropertyGroup>
 
 </Project>

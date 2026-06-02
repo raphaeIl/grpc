@@ -1,56 +1,94 @@
 <Project>
 
-  <!-- Fail loudly on unsupported platform or missing required type names. -->
-  <Target Name="_TcpToolsValidate" BeforeTargets="GenerateTcpServiceBases;BeforeCompile;CoreCompile">
-    <Error Condition="'$(TcpPluginExe)' == ''"
-           Text="Raphael.Tcp.Tools: no plugin binary for this platform. This package ships windows_x64 only (got OS='$(OS)'). Build the forked grpc_csharp_plugin for your platform and set TcpPluginExe." />
-    <Error Condition="'$(TcpIPacketHandler)' == '' or '$(TcpPacketHandlerAttr)' == '' or '$(TcpConnection)' == ''"
-           Text="Raphael.Tcp.Tools: set TcpIPacketHandler, TcpPacketHandlerAttr and TcpConnection (fully-qualified type names, no global:: prefix) in your project." />
+  <!-- ============================================================
+       Raphael.Tcp.Tools codegen
+       Self-contained: runs the bundled protoc to produce BOTH the C# message
+       classes (csharp_out) and the TCP packet-handler bases (grpc_out via the
+       forked plugin) from the consumer's Protobuf items. No Grpc.Tools.
+       ============================================================ -->
+
+  <!-- Fail loudly on an unsupported platform. -->
+  <Target Name="_TcpToolsValidate"
+          BeforeTargets="GenerateTcpServiceBases;BeforeCompile;CoreCompile">
+    <Error Condition="'$(TcpProtocExe)' == '' or '$(TcpPluginExe)' == ''"
+           Text="Raphael.Tcp.Tools: no protoc/plugin binary for this platform. This package ships windows_x64 only (got OS='$(OS)'). Build protoc and the forked grpc_csharp_plugin for your platform and set TcpProtocExe / TcpPluginExe." />
   </Target>
 
-  <!-- protoc + plugin invocation. Messages are emitted by Grpc.Tools' own Protobuf
-       item (consumer adds a Protobuf item with GrpcServices=None, which runs the C#
-       message codegen). This target adds the TCP base from the same protos. -->
   <PropertyGroup>
-    <TcpProtoDir Condition="'$(TcpProtoDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\protos'))</TcpProtoDir>
-    <!-- Same default as Grpc.Tools OutputDir / GrpcOutputDir (Protobuf_OutputPath -> IntermediateOutputPath). -->
-    <TcpOutDir Condition="'$(TcpOutDir)' == '' and '$(Protobuf_OutputPath)' != ''">$(Protobuf_OutputPath)</TcpOutDir>
+    <!-- Output dir for BOTH generated files. Default: the obj/ root
+         (IntermediateOutputPath, typically obj/<Config>/<TFW>/), matching
+         Grpc.Tools. Set TcpOutDir to send both files to a custom folder. -->
     <TcpOutDir Condition="'$(TcpOutDir)' == ''">$(IntermediateOutputPath)</TcpOutDir>
-    <_TcpOpts>tcp,ipackethandler=$(TcpIPacketHandler),packethandler_attr=$(TcpPacketHandlerAttr),connection=$(TcpConnection)</_TcpOpts>
+
+    <!-- Build the plugin option string, including only the knobs the consumer
+         actually set so the plugin applies its csharp_namespace / exact-name
+         defaults for the rest. -->
+    <_TcpOpts>tcp</_TcpOpts>
+    <_TcpOpts Condition="'$(TcpIPacketHandler)' != ''">$(_TcpOpts),ipackethandler=$(TcpIPacketHandler)</_TcpOpts>
+    <_TcpOpts Condition="'$(TcpPacketHandlerAttr)' != ''">$(_TcpOpts),packethandler_attr=$(TcpPacketHandlerAttr)</_TcpOpts>
+    <_TcpOpts Condition="'$(TcpConnection)' != ''">$(_TcpOpts),connection=$(TcpConnection)</_TcpOpts>
+    <_TcpOpts Condition="'$(TcpMsgIdPrefix)' != ''">$(_TcpOpts),msgid_prefix=$(TcpMsgIdPrefix)</_TcpOpts>
+    <_TcpOpts Condition="'$(TcpNormalizeCsScPrefix)' == 'true'">$(_TcpOpts),normalize_cs_sc_prefix=true</_TcpOpts>
   </PropertyGroup>
 
+  <!-- Resolve the input protos. Default: the consumer's <Protobuf Include=...>
+       items (same item Grpc.Tools uses). If TcpProtoDir is set, glob that
+       directory instead (legacy/escape hatch). -->
+  <ItemGroup Condition="'$(TcpProtoDir)' == ''">
+    <_TcpProto Include="@(Protobuf)" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TcpProtoDir)' != ''">
+    <_TcpProto Include="$(TcpProtoDir)\**\*.proto" />
+  </ItemGroup>
+
+  <!-- The SDK emits its own *.cs into the obj/ root (AssemblyInfo, GlobalUsings,
+       AssemblyAttributes, the editorconfig-derived ones). We glob obj/ for the
+       protoc-generated files, so define the SDK-owned patterns to exclude and
+       avoid double-compiling them. -->
   <ItemGroup>
-    <TcpProto Include="$(TcpProtoDir)\**\*.proto" />
-    <!-- Keep generated bases out of the SDK default glob; the target re-adds them. -->
-    <Compile Remove="$(TcpOutDir)\**\*Tcp.cs" />
+    <_TcpSdkGenerated Include="$(TcpOutDir)\**\*.AssemblyInfo.cs" />
+    <_TcpSdkGenerated Include="$(TcpOutDir)\**\*.AssemblyAttributes.cs" />
+    <_TcpSdkGenerated Include="$(TcpOutDir)\**\*.GlobalUsings.g.cs" />
+    <_TcpSdkGenerated Include="$(TcpOutDir)\**\*.AssemblyInfoInputs.cs" />
   </ItemGroup>
 
   <Target Name="GenerateTcpServiceBases"
           BeforeTargets="BeforeCompile;CoreCompile"
           DependsOnTargets="_TcpToolsValidate"
-          Inputs="@(TcpProto)"
-          Outputs="@(TcpProto->'$(TcpOutDir)\%(Filename)Tcp.cs')">
-    <!-- Resolve protoc inside the target: by now Grpc.Tools' own props/targets have run,
-         so Protobuf_ProtocFullPath (its resolved per-platform protoc) is populated. -->
+          Condition="'@(_TcpProto)' != ''"
+          Inputs="@(_TcpProto)"
+          Outputs="@(_TcpProto->'$(TcpOutDir)\%(Filename).tcpstamp')">
+    <Error Condition="!Exists('$(TcpProtocExe)')"
+           Text="Raphael.Tcp.Tools: could not locate protoc (tried '$(TcpProtocExe)')." />
+    <Error Condition="!Exists('$(TcpPluginExe)')"
+           Text="Raphael.Tcp.Tools: could not locate the TCP plugin (tried '$(TcpPluginExe)')." />
+
+    <!-- Resolve a trailing-slash-free output dir. On Windows a path that ends
+         in '\' immediately before a closing quote escapes the quote on the
+         command line and corrupts argument parsing, so normalize it here. -->
     <PropertyGroup>
-      <_TcpProtoc>$(Protobuf_ProtocFullPath)</_TcpProtoc>
-      <_TcpProtoc Condition="'$(_TcpProtoc)' == ''">$(Protobuf_PackagedToolsPath)\windows_x64\protoc.exe</_TcpProtoc>
+      <_TcpOutDirFull>$([System.IO.Path]::GetFullPath('$(TcpOutDir)').TrimEnd('\'))</_TcpOutDirFull>
     </PropertyGroup>
-    <Error Condition="!Exists('$(_TcpProtoc)')"
-           Text="Raphael.Tcp.Tools: could not locate protoc (tried '$(_TcpProtoc)'). Ensure Grpc.Tools restored correctly." />
-    <MakeDir Directories="$(TcpOutDir)" />
-    <!-- Add protobuf's well-known-types include dir so TCP protos can import
-         google/protobuf/*.proto (e.g. empty.proto for the Empty->void feature).
-         Grpc.Tools' own ProtoCompile task adds this automatically, but this
-         hand-rolled Exec must pass it explicitly. Fall back to the packaged
-         include dir if the property is empty. -->
-    <PropertyGroup>
-      <_TcpStandardImports>$(Protobuf_StandardImportsPath)</_TcpStandardImports>
-      <_TcpStandardImports Condition="'$(_TcpStandardImports)' == ''">$(Protobuf_PackagedToolsPath)\..\build\native\include</_TcpStandardImports>
-    </PropertyGroup>
-    <Exec Command="&quot;$(_TcpProtoc)&quot; --proto_path=&quot;$(TcpProtoDir)&quot; -I &quot;$(_TcpStandardImports)&quot; --grpc_out=$(_TcpOpts):&quot;$(TcpOutDir)&quot; --plugin=protoc-gen-grpc=&quot;$(TcpPluginExe)&quot; &quot;%(TcpProto.FullPath)&quot;" />
+
+    <MakeDir Directories="$(_TcpOutDirFull)" />
+
+    <!-- One protoc pass per proto produces both the message classes and the TCP
+         base. The proto's own directory plus the bundled well-known-types are
+         on the include path so imports of google/protobuf/*.proto resolve
+         (needed for the google.protobuf.Empty to void feature). %(Directory) is
+         a relative dir with a trailing slash; combine with RootDir and strip the
+         trailing slash for the same quoting reason as the output dir. -->
+    <Exec Command="&quot;$(TcpProtocExe)&quot; --proto_path=&quot;$([System.IO.Path]::GetDirectoryName('%(_TcpProto.FullPath)'))&quot; -I &quot;$(_TcpStandardImportsPath)&quot; --csharp_out=&quot;$(_TcpOutDirFull)&quot; --grpc_out=$(_TcpOpts):&quot;$(_TcpOutDirFull)&quot; --plugin=protoc-gen-grpc=&quot;$(TcpPluginExe)&quot; &quot;%(_TcpProto.FullPath)&quot;" />
+
+    <!-- Stamp for up-to-date checks (protoc's PascalCase message filenames are
+         not reliably predictable in MSBuild, so we don't list them as Outputs). -->
+    <Touch Files="@(_TcpProto->'$(TcpOutDir)\%(Filename).tcpstamp')" AlwaysCreate="true" />
+
+    <!-- Compile everything protoc just generated: messages (*.cs) and the TCP
+         bases (*Tcp.cs), excluding the SDK's own obj-root generated files. -->
     <ItemGroup>
-      <Compile Include="$(TcpOutDir)\**\*Tcp.cs" />
+      <Compile Include="$(TcpOutDir)\**\*.cs"
+               Exclude="@(_TcpSdkGenerated);@(Compile)" />
     </ItemGroup>
   </Target>
 

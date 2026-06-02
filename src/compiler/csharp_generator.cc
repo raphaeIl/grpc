@@ -514,9 +514,11 @@ void GenerateServerClass(Printer* out, const ServiceDescriptor* service,
 //
 // Emits an abstract base whose RPC methods route over a TCP packet dispatcher
 // rather than gRPC/HTTP-2. The server-side type names (IPacketHandler, the
-// PacketHandler attribute, Connection) are supplied by the caller via generator
-// options, so no project namespace is baked into the generator. The MsgId enum
-// is taken from the proto's own csharp_namespace.
+// PacketHandler attribute, Connection) may be supplied by the caller via
+// generator options; when omitted they default to the proto's own
+// csharp_namespace plus the canonical short name, so a zero-config consumer
+// still gets working output. The MsgId enum is taken from the proto's own
+// csharp_namespace.
 // ---------------------------------------------------------------------------
 struct TcpTypeNames {
   std::string ipackethandler;  // e.g. global::My.Pkg.IPacketHandler
@@ -524,6 +526,7 @@ struct TcpTypeNames {
   std::string connection;
   std::string msgid;
   std::string msgid_prefix;
+  bool normalize_cs_sc_prefix;
 };
 
 // Prefix a caller-supplied FQN with "global::" (callers pass it without).
@@ -551,8 +554,18 @@ std::string TcpStripDirectionalMessagePrefix(const std::string& message_name,
   return message_name;
 }
 
+// Build a MsgId member name from a message type name. By default this is the
+// exact message name with msgid_prefix prepended (empty prefix = exact name):
+// PingRequest -> PingRequest, or with prefix "Msg" -> MsgPingRequest. When
+// normalize_cs_sc_prefix is true, a leading CS_/SC_ on the message name is first
+// rewritten to Cs/Sc (CS_Foo + "Msg" -> MsgCsFoo); otherwise the name is used
+// verbatim.
 std::string TcpMsgIdNameFromMessage(const std::string& message_name,
-                                    const std::string& msgid_prefix) {
+                                    const std::string& msgid_prefix,
+                                    bool normalize_cs_sc_prefix) {
+  if (!normalize_cs_sc_prefix) {
+    return msgid_prefix + message_name;
+  }
   std::string direction_suffix;
   std::string base_name =
       TcpStripDirectionalMessagePrefix(message_name, &direction_suffix);
@@ -594,11 +607,13 @@ void GenerateServerClassTcp(Printer* out, const ServiceDescriptor* service,
     // the response type-derived id.
     bool is_void = TcpIsVoidResponse(method);
     std::string request_msgid = TcpMsgIdNameFromMessage(
-        std::string(method->input_type()->name()), types.msgid_prefix);
-    std::string reply = is_void ? ""
-                                : TcpMsgIdNameFromMessage(
-                                      std::string(method->output_type()->name()),
-                                      types.msgid_prefix);
+        std::string(method->input_type()->name()), types.msgid_prefix,
+        types.normalize_cs_sc_prefix);
+    std::string reply =
+        is_void ? ""
+                : TcpMsgIdNameFromMessage(
+                      std::string(method->output_type()->name()),
+                      types.msgid_prefix, types.normalize_cs_sc_prefix);
     if (reply.empty()) {
       out->Print("[$attr$($msgid$.$request_msgid$)]\n", "attr",
                  types.packethandler_attr, "msgid", types.msgid,
@@ -1021,7 +1036,8 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
                            const std::string& connection_type,
-                           const std::string& msgid_prefix) {
+                           const std::string& msgid_prefix,
+                           bool normalize_cs_sc_prefix) {
   std::string output;
   {
     StringOutputStream output_stream(&output);
@@ -1031,15 +1047,25 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
       return output;
     }
 
-    // Resolve the server-side type names once. The three handler types come
-    // from the caller; MsgId is the proto's own csharp_namespace + ".MsgId".
+    // The proto's own csharp_namespace anchors both the MsgId enum and the
+    // default server-side type names (used when the caller omits an option).
+    std::string file_ns = GRPC_CUSTOM_CSHARP_GETFILENAMESPACE(file);
+
+    // Resolve the server-side type names once. Each handler type is the
+    // caller-supplied FQN when present, otherwise <csharp_namespace>.<short>.
+    // MsgId is always the proto's own csharp_namespace + ".MsgId".
     TcpTypeNames types;
-    types.ipackethandler = TcpGlobal(ipackethandler_type);
-    types.packethandler_attr = TcpGlobal(packethandler_attr_type);
-    types.connection = TcpGlobal(connection_type);
-    types.msgid =
-        TcpGlobal(GRPC_CUSTOM_CSHARP_GETFILENAMESPACE(file) + ".MsgId");
+    types.ipackethandler = TcpGlobal(
+        ipackethandler_type.empty() ? file_ns + ".IPacketHandler"
+                                    : ipackethandler_type);
+    types.packethandler_attr = TcpGlobal(
+        packethandler_attr_type.empty() ? file_ns + ".PacketHandlerAttribute"
+                                        : packethandler_attr_type);
+    types.connection = TcpGlobal(
+        connection_type.empty() ? file_ns + ".Connection" : connection_type);
+    types.msgid = TcpGlobal(file_ns + ".MsgId");
     types.msgid_prefix = msgid_prefix;
+    types.normalize_cs_sc_prefix = normalize_cs_sc_prefix;
 
     out.Print("// <auto-generated>\n");
     out.Print(
@@ -1058,15 +1084,14 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
     out.Print("#region Designer generated code\n");
     out.Print("\n");
 
-    std::string file_namespace = GRPC_CUSTOM_CSHARP_GETFILENAMESPACE(file);
-    if (file_namespace != "") {
-      out.Print("namespace $namespace$ {\n", "namespace", file_namespace);
+    if (file_ns != "") {
+      out.Print("namespace $namespace$ {\n", "namespace", file_ns);
       out.Indent();
     }
     for (int i = 0; i < file->service_count(); i++) {
       GenerateServiceTcp(&out, file->service(i), internal_access, types);
     }
-    if (file_namespace != "") {
+    if (file_ns != "") {
       out.Outdent();
       out.Print("}\n");
     }

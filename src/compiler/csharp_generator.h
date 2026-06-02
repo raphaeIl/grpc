@@ -30,21 +30,28 @@ std::string GetServices(const grpc::protobuf::FileDescriptor* file,
 // TCP variant: emits an abstract `<Service>Base : IPacketHandler` whose RPC
 // methods are synchronous `<Response> <Method>(<Request> request, Connection
 // connection)` tagged with `[PacketHandler(MsgId.<RequestTypeDerivedId>)]`.
-// MsgId member names are built from message names with a caller-supplied
-// prefix, stripping a leading CS_/SC_ marker and normalizing it to Cs/Sc.
-// Routes over a TCP packet dispatcher instead of gRPC/HTTP-2. No client stub,
-// no marshallers, no BindService, no ServerCallContext.
+// MsgId member names are built from the exact message type name with an
+// optional caller-supplied prefix prepended. Routes over a TCP packet
+// dispatcher instead of gRPC/HTTP-2. No client stub, no marshallers, no
+// BindService, no ServerCallContext.
 //
-// The server-side type names are caller-supplied (fully-qualified, WITHOUT a
+// The server-side type names may be caller-supplied (fully-qualified, WITHOUT a
 // leading "global::"): the IPacketHandler interface, the PacketHandler
-// attribute, and the Connection type. This keeps any project-specific namespace
-// out of the generator.
+// attribute, and the Connection type. When any is empty, it defaults to the
+// proto's own `csharp_namespace` plus the canonical short name
+// (`IPacketHandler`, `PacketHandlerAttribute`, `Connection`), so a zero-config
+// consumer gets working output.
+//
+// `msgid_prefix` is prepended verbatim to the exact message type name (empty =
+// exact names). When `normalize_cs_sc_prefix` is true, a leading `CS_`/`SC_` on
+// the message name is rewritten to `Cs`/`Sc` before prefixing (off by default).
 std::string GetServicesTcp(const grpc::protobuf::FileDescriptor* file,
                            bool internal_access,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
                            const std::string& connection_type,
-                           const std::string& msgid_prefix);
+                           const std::string& msgid_prefix,
+                           bool normalize_cs_sc_prefix);
 
 }  // namespace grpc_csharp_generator
 

@@ -1,22 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- Packaging-only project: ships the forked grpc_csharp_plugin (TCP variant)
-       plus MSBuild .props/.targets that wire it into Grpc.Tools' <Protobuf> item.
-       No compiled output of its own. -->
+  <!-- Packaging-only project: ships its own protoc, the forked grpc_csharp_plugin
+       (TCP variant), the well-known-type proto includes, plus MSBuild
+       .props/.targets that drive codegen from the consumer's <Protobuf> items.
+       Self-contained: no Grpc.Tools dependency. No compiled output of its own. -->
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <IncludeBuildOutput>false</IncludeBuildOutput>
-    <!-- Keep the Grpc.Tools dependency in the nuspec: consumers need it for protoc
-         and the <Protobuf> message codegen that this package's .targets builds on. -->
+    <!-- NU5128: no lib/ref for a build-tooling-only package. -->
     <NoWarn>$(NoWarn);NU5128</NoWarn>
 
     <PackageId>Raphael.Tcp.Tools</PackageId>
-    <Version>1.2.1</Version>
-    <PackageReleaseNotes>1.2.1: default TcpOutDir now matches Grpc.Tools (obj/ via Protobuf_OutputPath or IntermediateOutputPath) instead of project-root Generated/; set TcpOutDir explicitly for a custom folder. 1.2.0: breaking TCP codegen shape changes - remove wrapper service class, rename generated base class to &lt;ServiceNameWithoutService&gt;HandlerBase, derive MsgId from request/response message names with CS_/SC_ normalization and configurable msgid_prefix (TcpMsgIdPrefix). See CHANGELOG.md.</PackageReleaseNotes>
+    <Version>2.0.0</Version>
+    <PackageReleaseNotes>2.0.0 (breaking): self-contained - no longer depends on Grpc.Tools; ships its own protoc, plugin and well-known-type includes, and now generates the C# message classes itself (--csharp_out) alongside the TCP bases. Zero-config default: handler/attr/connection types default to the proto's csharp_namespace (&lt;ns&gt;.IPacketHandler / .PacketHandlerAttribute / .Connection), MsgId members default to the exact message names (no prefix, no CS_/SC_ normalization). Input is read from the consumer's &lt;Protobuf Include=...&gt; items; output goes to the obj/ root by default. TcpMsgIdPrefix now prepends only; CS_/SC_ normalization is opt-in via TcpNormalizeCsScPrefix. See CHANGELOG.md.</PackageReleaseNotes>
     <Authors>raphaeIl</Authors>
-    <Description>protoc tooling that generates synchronous TCP packet-handler service bases
-      (IPacketHandler / [PacketHandler(MsgId)] / Connection) instead of gRPC HTTP/2 stubs,
-      via a forked grpc_csharp_plugin. Depends on Grpc.Tools for protoc and the message codegen.
+    <PackageProjectUrl>https://github.com/raphaeIl/grpc</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/raphaeIl/grpc.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Self-contained protoc tooling that generates synchronous TCP packet-handler
+      service bases (IPacketHandler / [PacketHandler(MsgId)] / Connection) plus the C#
+      message classes from your .proto files, via a forked grpc_csharp_plugin. Ships its
+      own protoc and well-known-type includes; no Grpc.Tools dependency.
       Windows-x64 only in this version.</Description>
     <PackageTags>protobuf;protoc;grpc;tcp;codegen;msbuild</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
@@ -29,17 +33,9 @@
     <None Include="CHANGELOG.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <!-- The package brings its own protoc + the <Protobuf> item / message codegen.
-       PrivateAssets="none" so Grpc.Tools' build assets (props/targets that set
-       Protobuf_ properties and run the C# message codegen) flow transitively to the
-       consumer; otherwise the default excludes Build and the consumer gets no protoc. -->
-  <ItemGroup>
-    <PackageReference Include="Grpc.Tools" Version="2.66.0"
-                      PrivateAssets="none"
-                      IncludeAssets="build;buildMultitargeting;buildTransitive;compile;runtime;native;contentfiles;analyzers" />
-  </ItemGroup>
-
-  <!-- Ship the MSBuild logic and the plugin binary as package content. -->
+  <!-- Ship the MSBuild logic, the bundled protoc + plugin binaries, and the
+       well-known-type proto includes as package content. build\** covers both
+       the .props/.targets and build\native\include\**. -->
   <ItemGroup>
     <None Include="build\**" Pack="true" PackagePath="build\" />
     <None Include="tools\**" Pack="true" PackagePath="tools\" />

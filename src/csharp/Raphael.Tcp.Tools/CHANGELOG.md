@@ -6,6 +6,42 @@ this package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.0]
+
+### Removed
+- **Breaking:** dropped the `Grpc.Tools` dependency. The package is now
+  self-contained — it ships its own `protoc`, the forked `grpc_csharp_plugin`,
+  and the well-known-type proto includes (`build/native/include`).
+
+### Added
+- The package now generates the C# **message** classes itself (`--csharp_out`)
+  in the same protoc pass as the TCP bases, so a consumer no longer needs
+  `Grpc.Tools` (or its `<Protobuf GrpcServices="None">` item) for messages.
+- `TcpNormalizeCsScPrefix` (plugin option `normalize_cs_sc_prefix`,
+  default `false`): when `true`, a leading `CS_`/`SC_` on a message name is
+  rewritten to `Cs`/`Sc` before the prefix is applied. This restores the
+  pre-2.0 directional normalization as an explicit opt-in.
+
+### Changed
+- **Breaking (zero-config defaults):** `TcpIPacketHandler`,
+  `TcpPacketHandlerAttr` and `TcpConnection` are now optional. When unset, the
+  plugin defaults each to the proto's own `csharp_namespace` plus the canonical
+  short name: `<ns>.IPacketHandler`, `<ns>.PacketHandlerAttribute`,
+  `<ns>.Connection`. A bare `dotnet add package Raphael.Tcp.Tools` now produces
+  compiling output with no MSBuild properties at all.
+- **Breaking (MsgId mapping):** `MsgId` members now default to the **exact**
+  message type name (e.g. `PingRequest`, `PongReply`) — no prefix and no
+  `CS_`/`SC_` normalization. `TcpMsgIdPrefix` now *only* prepends its value
+  verbatim (`Msg` -> `MsgPingRequest`); the `Reply`/`Response` and `CS_`/`SC_`
+  rewrites no longer happen unless `TcpNormalizeCsScPrefix` is enabled.
+- **Breaking (input source):** proto inputs are now read from the consumer's
+  `<Protobuf Include="..." />` items (the same item Grpc.Tools used), instead of
+  a `protos/` glob. `TcpProtoDir` remains as an optional escape hatch that globs
+  a directory instead.
+- `TcpOutDir` now defaults to the `obj/` root (`IntermediateOutputPath`) and is
+  resolved without a `Protobuf_OutputPath` fallback. It controls the output
+  location for **both** generated files (messages and `*Tcp.cs`).
+
 ## [1.2.1]
 
 ### Changed

@@ -65,12 +65,20 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     bool append_async_suffix = false;
     bool tcp = false;
     // TCP mode: fully-qualified names of the server-side types the generated
-    // base depends on. Required when tcp=true; no defaults (so no repo name is
-    // baked into the generator). Supply WITHOUT a leading "global::".
+    // base depends on. Optional when tcp=true; when left empty each defaults to
+    // the proto's own csharp_namespace plus the canonical short name
+    // (IPacketHandler / PacketHandlerAttribute / Connection), so a zero-config
+    // consumer still compiles. Supply WITHOUT a leading "global::".
     std::string tcp_ipackethandler = "";
     std::string tcp_packethandler_attr = "";
     std::string tcp_connection = "";
-    std::string tcp_msgid_prefix = "Msg";
+    // Prepended verbatim to the exact message type name when building MsgId
+    // members (empty = exact names, e.g. PingRequest).
+    std::string tcp_msgid_prefix = "";
+    // When true, rewrite a leading CS_/SC_ on the message name to Cs/Sc before
+    // prefixing (CS_Foo + "Msg" -> MsgCsFoo). Off by default: names are used
+    // verbatim.
+    bool tcp_normalize_cs_sc_prefix = false;
     std::string base_namespace = "";
     bool base_namespace_present = false;
 
@@ -97,6 +105,9 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
         tcp_connection = options[i].second;
       } else if (options[i].first == "msgid_prefix") {
         tcp_msgid_prefix = options[i].second;
+      } else if (options[i].first == "normalize_cs_sc_prefix") {
+        tcp_normalize_cs_sc_prefix =
+            (options[i].second == "true" || options[i].second == "");
       } else if (options[i].first == "file_suffix") {
         file_suffix = options[i].second;
         file_suffix_present = true;
@@ -119,22 +130,13 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
       file_suffix = "Tcp.cs";
     }
 
-    // TCP mode requires the server-side type names; there are no defaults.
-    if (tcp && (tcp_ipackethandler.empty() || tcp_packethandler_attr.empty() ||
-                tcp_connection.empty())) {
-      *error =
-          "tcp mode requires the 'ipackethandler', 'packethandler_attr', and "
-          "'connection' options (fully-qualified type names without "
-          "'global::'). Example: --grpc_opt=tcp,ipackethandler=My.Pkg."
-          "IPacketHandler,packethandler_attr=My.Pkg.PacketHandler,connection="
-          "My.Pkg.Connection";
-      return false;
-    }
-
+    // TCP mode: any omitted type name defaults inside the generator to the
+    // proto's own csharp_namespace, so no options are strictly required.
     std::string code =
         tcp ? grpc_csharp_generator::GetServicesTcp(
                   file, internal_access, tcp_ipackethandler,
-                  tcp_packethandler_attr, tcp_connection, tcp_msgid_prefix)
+                  tcp_packethandler_attr, tcp_connection, tcp_msgid_prefix,
+                  tcp_normalize_cs_sc_prefix)
             : grpc_csharp_generator::GetServices(file, generate_client,
                                                  generate_server,
                                                  internal_access,
