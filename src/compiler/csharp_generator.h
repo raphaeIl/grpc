@@ -37,10 +37,10 @@ std::string GetServices(const grpc::protobuf::FileDescriptor* file,
 //
 // The server-side type names may be caller-supplied (fully-qualified, WITHOUT a
 // leading "global::"): the IPacketHandler interface, the PacketHandler
-// attribute, and the Connection type. When any is empty, it defaults to the
-// proto's own `csharp_namespace` plus the canonical short name
-// (`IPacketHandler`, `PacketHandlerAttribute`, `Connection`), so a zero-config
-// consumer gets working output.
+// attribute, the Connection type, and the MsgId enum type. When any is empty it
+// defaults to the proto's own `csharp_namespace` plus the canonical short name
+// (`IPacketHandler`, `PacketHandlerAttribute`, `Connection`, `MsgId`), so a
+// zero-config consumer gets working output.
 //
 // `msgid_prefix` is prepended verbatim to the exact message type name (empty =
 // exact names). When `normalize_cs_sc_prefix` is true, a leading `CS_`/`SC_` on
@@ -50,6 +50,7 @@ std::string GetServicesTcp(const grpc::protobuf::FileDescriptor* file,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
                            const std::string& connection_type,
+                           const std::string& msgid_type,
                            const std::string& msgid_prefix,
                            bool normalize_cs_sc_prefix);
 

@@ -1036,6 +1036,7 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
                            const std::string& ipackethandler_type,
                            const std::string& packethandler_attr_type,
                            const std::string& connection_type,
+                           const std::string& msgid_type,
                            const std::string& msgid_prefix,
                            bool normalize_cs_sc_prefix) {
   std::string output;
@@ -1051,9 +1052,9 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
     // default server-side type names (used when the caller omits an option).
     std::string file_ns = GRPC_CUSTOM_CSHARP_GETFILENAMESPACE(file);
 
-    // Resolve the server-side type names once. Each handler type is the
-    // caller-supplied FQN when present, otherwise <csharp_namespace>.<short>.
-    // MsgId is always the proto's own csharp_namespace + ".MsgId".
+    // Resolve the server-side type names once. Each type is the caller-supplied
+    // FQN when present, otherwise <csharp_namespace>.<short>. The MsgId enum
+    // type follows the same rule (default <csharp_namespace>.MsgId).
     TcpTypeNames types;
     types.ipackethandler = TcpGlobal(
         ipackethandler_type.empty() ? file_ns + ".IPacketHandler"
@@ -1063,7 +1064,8 @@ std::string GetServicesTcp(const FileDescriptor* file, bool internal_access,
                                         : packethandler_attr_type);
     types.connection = TcpGlobal(
         connection_type.empty() ? file_ns + ".Connection" : connection_type);
-    types.msgid = TcpGlobal(file_ns + ".MsgId");
+    types.msgid =
+        TcpGlobal(msgid_type.empty() ? file_ns + ".MsgId" : msgid_type);
     types.msgid_prefix = msgid_prefix;
     types.normalize_cs_sc_prefix = normalize_cs_sc_prefix;
 

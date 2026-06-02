@@ -6,6 +6,15 @@ this package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [2.0.1]
+
+### Added
+- `TcpMsgIdType` (plugin option `msgid_type`): fully-qualified name of the
+  `MsgId` enum type used in the generated `[PacketHandler(...)]` attributes. When
+  unset it defaults to `<csharp_namespace>.MsgId` (the previous, fixed behavior),
+  so this is backward-compatible. Set it to point `MsgId` at a shared/other
+  namespace, e.g. `TemplateTCPServer.Common.Packets.MsgId`.
+
 ## [2.0.0]
 
 ### Removed

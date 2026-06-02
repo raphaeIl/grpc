@@ -67,11 +67,13 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     // TCP mode: fully-qualified names of the server-side types the generated
     // base depends on. Optional when tcp=true; when left empty each defaults to
     // the proto's own csharp_namespace plus the canonical short name
-    // (IPacketHandler / PacketHandlerAttribute / Connection), so a zero-config
-    // consumer still compiles. Supply WITHOUT a leading "global::".
+    // (IPacketHandler / PacketHandlerAttribute / Connection / MsgId), so a
+    // zero-config consumer still compiles. Supply WITHOUT a leading "global::".
     std::string tcp_ipackethandler = "";
     std::string tcp_packethandler_attr = "";
     std::string tcp_connection = "";
+    // FQN of the MsgId enum type (empty = <csharp_namespace>.MsgId).
+    std::string tcp_msgid_type = "";
     // Prepended verbatim to the exact message type name when building MsgId
     // members (empty = exact names, e.g. PingRequest).
     std::string tcp_msgid_prefix = "";
@@ -103,6 +105,8 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
         tcp_packethandler_attr = options[i].second;
       } else if (options[i].first == "connection") {
         tcp_connection = options[i].second;
+      } else if (options[i].first == "msgid_type") {
+        tcp_msgid_type = options[i].second;
       } else if (options[i].first == "msgid_prefix") {
         tcp_msgid_prefix = options[i].second;
       } else if (options[i].first == "normalize_cs_sc_prefix") {
@@ -135,8 +139,8 @@ class CSharpGrpcGenerator : public grpc::protobuf::compiler::CodeGenerator {
     std::string code =
         tcp ? grpc_csharp_generator::GetServicesTcp(
                   file, internal_access, tcp_ipackethandler,
-                  tcp_packethandler_attr, tcp_connection, tcp_msgid_prefix,
-                  tcp_normalize_cs_sc_prefix)
+                  tcp_packethandler_attr, tcp_connection, tcp_msgid_type,
+                  tcp_msgid_prefix, tcp_normalize_cs_sc_prefix)
             : grpc_csharp_generator::GetServices(file, generate_client,
                                                  generate_server,
                                                  internal_access,

@@ -11,8 +11,8 @@
     <NoWarn>$(NoWarn);NU5128</NoWarn>
 
     <PackageId>Raphael.Tcp.Tools</PackageId>
-    <Version>2.0.0</Version>
-    <PackageReleaseNotes>2.0.0 (breaking): self-contained - no longer depends on Grpc.Tools; ships its own protoc, plugin and well-known-type includes, and now generates the C# message classes itself (--csharp_out) alongside the TCP bases. Zero-config default: handler/attr/connection types default to the proto's csharp_namespace (&lt;ns&gt;.IPacketHandler / .PacketHandlerAttribute / .Connection), MsgId members default to the exact message names (no prefix, no CS_/SC_ normalization). Input is read from the consumer's &lt;Protobuf Include=...&gt; items; output goes to the obj/ root by default. TcpMsgIdPrefix now prepends only; CS_/SC_ normalization is opt-in via TcpNormalizeCsScPrefix. See CHANGELOG.md.</PackageReleaseNotes>
+    <Version>2.0.1</Version>
+    <PackageReleaseNotes>2.0.1: the MsgId enum type is now configurable via TcpMsgIdType (plugin option msgid_type); defaults to &lt;csharp_namespace&gt;.MsgId as before. 2.0.0 (breaking): self-contained - no longer depends on Grpc.Tools; ships its own protoc, plugin and well-known-type includes, and now generates the C# message classes itself (--csharp_out) alongside the TCP bases. Zero-config default: handler/attr/connection types default to the proto's csharp_namespace (&lt;ns&gt;.IPacketHandler / .PacketHandlerAttribute / .Connection), MsgId members default to the exact message names (no prefix, no CS_/SC_ normalization). Input is read from the consumer's &lt;Protobuf Include=...&gt; items; output goes to the obj/ root by default. TcpMsgIdPrefix now prepends only; CS_/SC_ normalization is opt-in via TcpNormalizeCsScPrefix. See CHANGELOG.md.</PackageReleaseNotes>
     <Authors>raphaeIl</Authors>
     <PackageProjectUrl>https://github.com/raphaeIl/grpc</PackageProjectUrl>
     <RepositoryUrl>https://github.com/raphaeIl/grpc.git</RepositoryUrl>
