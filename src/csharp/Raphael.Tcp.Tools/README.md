@@ -58,11 +58,14 @@ the generated names) in the proto's `csharp_namespace`.
 ## Customization
 
 Everything above is overridable from the consuming project's `PropertyGroup`.
-Set only what you need:
+Every property is optional — set only what you need. The block below shows the
+**complete** set of configurable properties:
 
 ```xml
 <PropertyGroup>
-  <!-- Fully-qualified names of YOUR types (no global:: prefix). -->
+  <!-- ===== Generated type names ===== -->
+  <!-- Fully-qualified names of YOUR types (no global:: prefix).
+       Omit any one to default it to <csharp_namespace>.<ShortName>. -->
   <TcpIPacketHandler>Custom.Server.IPacketHandler</TcpIPacketHandler>
   <TcpPacketHandlerAttr>Custom.Server.PacketHandlerAttribute</TcpPacketHandlerAttr>
   <TcpConnection>Custom.Server.Connection</TcpConnection>
@@ -70,29 +73,43 @@ Set only what you need:
   <!-- FQN of the MsgId enum type. Default is <csharp_namespace>.MsgId. -->
   <TcpMsgId>Custom.Server.PacketTypes</TcpMsgId>
 
-  <!-- Prepended verbatim to the exact message name: PingRequest -> MsgPingRequest. -->
+  <!-- ===== MsgId member naming ===== -->
+  <!-- Prepended verbatim to the exact message name: PingRequest -> MsgPingRequest.
+       Default is empty (exact message names). -->
   <TcpMsgIdPrefix>Msg</TcpMsgIdPrefix>
 
   <!-- Opt in to rewriting a leading CS_/SC_ to Cs/Sc before the prefix:
        CS_Login -> MsgCsLogin, SC_Login -> MsgScLogin. Default is false. -->
   <TcpNormalizeCsScPrefix>true</TcpNormalizeCsScPrefix>
 
+  <!-- ===== Input / output ===== -->
   <!-- Output dir for BOTH the message file and the *Tcp.cs. Default: obj/ root. -->
   <TcpOutDir>Generated</TcpOutDir>
+
+  <!-- Escape hatch: glob this directory for .proto files instead of using the
+       <Protobuf Include=...> items. Leave unset to use <Protobuf> items. -->
+  <TcpProtoDir>$(MSBuildProjectDirectory)\protos</TcpProtoDir>
+
+  <!-- ===== Tool overrides (rarely needed) ===== -->
+  <!-- Override the bundled windows_x64 binaries, e.g. to supply your own
+       per-platform build. Defaults point at the binaries shipped in the package. -->
+  <TcpProtocExe>$(MyTools)\protoc.exe</TcpProtocExe>
+  <TcpPluginExe>$(MyTools)\grpc_csharp_plugin.exe</TcpPluginExe>
 </PropertyGroup>
 ```
 
 | Property | Default | Effect |
 | --- | --- | --- |
-| `TcpIPacketHandler` | `<csharp_namespace>.IPacketHandler` | FQN of the interface the base implements |
+| `TcpIPacketHandler` | `<csharp_namespace>.IPacketHandler` | FQN of the interface the generated base implements |
 | `TcpPacketHandlerAttr` | `<csharp_namespace>.PacketHandlerAttribute` | FQN of the `[PacketHandler]` attribute |
 | `TcpConnection` | `<csharp_namespace>.Connection` | FQN of the per-call connection type |
 | `TcpMsgId` | `<csharp_namespace>.MsgId` | FQN of the `MsgId` enum type used in the attributes |
-| `TcpMsgIdPrefix` | *(empty)* | String prepended to the exact message name for each `MsgId` member |
-| `TcpNormalizeCsScPrefix` | `false` | When `true`, rewrite a leading `CS_`/`SC_` to `Cs`/`Sc` before prefixing |
-| `TcpOutDir` | `$(IntermediateOutputPath)` (obj/ root) | Output dir for the message file and the `*Tcp.cs` |
-| `TcpProtoDir` | *(unset)* | Escape hatch: glob this dir for protos instead of using `<Protobuf>` items |
-| `TcpProtocExe` / `TcpPluginExe` | bundled `windows_x64` binaries | Override to supply your own protoc / plugin |
+| `TcpMsgIdPrefix` | *(empty)* | String prepended to the exact message name for each `MsgId` member (`PingRequest` → `<prefix>PingRequest`) |
+| `TcpNormalizeCsScPrefix` | `false` | When `true`, rewrite a leading `CS_`/`SC_` to `Cs`/`Sc` before applying `TcpMsgIdPrefix` |
+| `TcpOutDir` | `$(IntermediateOutputPath)` (obj/ root) | Output dir for **both** the message file and the `*Tcp.cs` |
+| `TcpProtoDir` | *(unset)* | Escape hatch: glob this directory for protos instead of using `<Protobuf>` items |
+| `TcpProtocExe` | bundled `windows_x64\protoc.exe` | Override the `protoc` binary used for codegen |
+| `TcpPluginExe` | bundled `windows_x64\grpc_csharp_plugin.exe` | Override the TCP plugin binary used for codegen |
 
 Inputs are read from your `<Protobuf Include="..." />` items by default. Generated
 files are compiled automatically, regenerated on build, and need not be committed.
