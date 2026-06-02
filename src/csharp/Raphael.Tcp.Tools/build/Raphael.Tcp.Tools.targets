@@ -13,7 +13,9 @@
        message codegen). This target adds the TCP base from the same protos. -->
   <PropertyGroup>
     <TcpProtoDir Condition="'$(TcpProtoDir)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\protos'))</TcpProtoDir>
-    <TcpOutDir Condition="'$(TcpOutDir)' == ''">$(MSBuildProjectDirectory)\Generated</TcpOutDir>
+    <!-- Same default as Grpc.Tools OutputDir / GrpcOutputDir (Protobuf_OutputPath -> IntermediateOutputPath). -->
+    <TcpOutDir Condition="'$(TcpOutDir)' == '' and '$(Protobuf_OutputPath)' != ''">$(Protobuf_OutputPath)</TcpOutDir>
+    <TcpOutDir Condition="'$(TcpOutDir)' == ''">$(IntermediateOutputPath)</TcpOutDir>
     <_TcpOpts>tcp,ipackethandler=$(TcpIPacketHandler),packethandler_attr=$(TcpPacketHandlerAttr),connection=$(TcpConnection)</_TcpOpts>
   </PropertyGroup>
 

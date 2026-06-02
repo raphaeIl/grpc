@@ -52,15 +52,16 @@ error. To use it elsewhere, build the forked plugin for your platform and set
 </PropertyGroup>
 
 <ItemGroup>
-  <PackageReference Include="Raphael.Tcp.Tools" Version="1.2.0" />
+  <PackageReference Include="Raphael.Tcp.Tools" Version="1.2.1" />
   <!-- Messages: Grpc.Tools (a transitive dependency) handles --csharp_out. -->
   <Protobuf Include="protos\**\*.proto" GrpcServices="None" />
 </ItemGroup>
 ```
 
 Drop `.proto` files into `protos/` (override with `TcpProtoDir`). Generated
-`*Tcp.cs` lands in `Generated/` (override with `TcpOutDir`) and is compiled
-automatically. Both are regenerated on build; neither needs to be committed.
+`*Tcp.cs` lands under `obj/` by default (same as `Grpc.Tools` message/gRPC output,
+via `Protobuf_OutputPath` / `IntermediateOutputPath`). Set `TcpOutDir` to override.
+Files are compiled automatically, regenerated on build, and need not be committed.
 
 Your project must define the three referenced types and a `MsgId` enum whose members
 match generated message-derived names.

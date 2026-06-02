@@ -11,8 +11,8 @@
     <NoWarn>$(NoWarn);NU5128</NoWarn>
 
     <PackageId>Raphael.Tcp.Tools</PackageId>
-    <Version>1.2.0</Version>
-    <PackageReleaseNotes>1.2.0: breaking TCP codegen shape changes - remove wrapper service class, rename generated base class to &lt;ServiceNameWithoutService&gt;HandlerBase, derive MsgId from request/response message names with CS_/SC_ normalization and configurable msgid_prefix (TcpMsgIdPrefix). 1.1.2: fix TCP protoc invocation to include protobuf well-known imports path (google/protobuf/* now resolves, including Empty-&gt;void scenarios). 1.1.1: add changelog/release notes. 1.1.0: google.protobuf.Empty response now maps to a C# void handler (no auto-reply); dropped the Raphael prefix from all build properties (RaphaelTcp* -&gt; Tcp*) - breaking for consuming csproj. See CHANGELOG.md.</PackageReleaseNotes>
+    <Version>1.2.1</Version>
+    <PackageReleaseNotes>1.2.1: default TcpOutDir now matches Grpc.Tools (obj/ via Protobuf_OutputPath or IntermediateOutputPath) instead of project-root Generated/; set TcpOutDir explicitly for a custom folder. 1.2.0: breaking TCP codegen shape changes - remove wrapper service class, rename generated base class to &lt;ServiceNameWithoutService&gt;HandlerBase, derive MsgId from request/response message names with CS_/SC_ normalization and configurable msgid_prefix (TcpMsgIdPrefix). See CHANGELOG.md.</PackageReleaseNotes>
     <Authors>raphaeIl</Authors>
     <Description>protoc tooling that generates synchronous TCP packet-handler service bases
       (IPacketHandler / [PacketHandler(MsgId)] / Connection) instead of gRPC HTTP/2 stubs,

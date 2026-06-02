@@ -4,6 +4,16 @@ All notable changes to **Raphael.Tcp.Tools** are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.2.1]
+
+### Changed
+- Default `TcpOutDir` is now `Protobuf_OutputPath` (falls back to
+  `IntermediateOutputPath`, typically `obj/<Configuration>/<TargetFramework>/`)
+  instead of `Generated/` at the project root. Set `TcpOutDir` explicitly to keep
+  a custom output folder (for example `Generated`).
+
 ## [1.2.0]
 
 ### Added
